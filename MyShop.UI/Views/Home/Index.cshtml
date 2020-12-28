@@ -32,7 +32,7 @@
                 <p>₹@item.Price</p>
             </div>
             <div class="col-md-12">
-                <a href="#" class="btn btn-default">Add to Cart</a>
+                <a href="@Url.Action("AddToCart", "ShoppingCart", new { Id = item.Id})" class="btn btn-default">Add to Cart</a>
             </div>
         </div>
     }
