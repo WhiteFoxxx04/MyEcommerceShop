@@ -1,5 +1,6 @@
 ﻿using MyShop.Core.Contracts;
 using MyShop.Core.Models;
+using MyShop.Core.ViewModel;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,7 +10,7 @@ using System.Web;
 
 namespace MyShop.Services
 {
-    public class ShoppingCartService
+    public class ShoppingCartService :  IShoppingCartService
     {
         IRepository<Product> productContext;
         IRepository<ShoppingCart> cartContext;
@@ -23,7 +24,6 @@ namespace MyShop.Services
             this.productContext = ProductContext;
         }
 
-        //For reading the shopping th ecart
         //In order to read the cookies we will use HTTP Context
         //we need to read the user cookies from http context looking for the cart id and then attemp to read the cart id from the database
         private ShoppingCart GetCart(HttpContextBase httpContext, bool CreateIfNull)
@@ -105,6 +105,56 @@ namespace MyShop.Services
             {
                 cart.CartItems.Remove(item);
                 cartContext.Commit();
+            }
+        }
+
+        //For getting the product from the shopping cart
+        public List<CartItemViewModel> GetCartItems(HttpContextBase httpContext)
+        {
+            ShoppingCart cart = GetCart(httpContext, false);
+
+            if (cart != null)
+            {
+                //querying using linq to get the items from both the table using join shopping cart table with product table
+                var results = (from c in cart.CartItems
+                               join p in productContext.Collection() on c.ProductId equals p.Id
+                               select new CartItemViewModel()
+                               {
+                                   Id = c.Id,
+                                   Quantity = c.Quantity,
+                                   ProductName = p.Name,
+                                   Image = p.Image,
+                                   Price = p.Price
+                               }).ToList();
+                return results;
+            }
+            else
+            {
+                return new List<CartItemViewModel>();
+            }
+        }
+
+        public CartSummaryViewModel GetCartSummary(HttpContextBase httpContext)
+        {
+            ShoppingCart cart = GetCart(httpContext, false);
+            CartSummaryViewModel model = new CartSummaryViewModel(0, 0);
+            if (cart != null)
+            {
+                int? cartCount = (from item in cart.CartItems
+                                  select item.Quantity).Sum();
+
+                decimal? cartTotal = (from item in cart.CartItems
+                                      join p in productContext.Collection() on item.ProductId equals p.Id
+                                      select item.Quantity * p.Price).Sum();
+
+                model.CartCount = cartCount ?? 0;
+                model.CartTotal = cartTotal ?? decimal.Zero;
+
+                return model;
+            }
+            else
+            {
+                return model;
             }
         }
     }
